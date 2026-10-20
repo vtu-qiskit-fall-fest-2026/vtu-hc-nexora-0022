@@ -307,6 +307,6 @@ Released under the [MIT License](LICENSE). See `LICENSE` for details.
 **Nexora** · Team ID `VTU-QFF-HC-0022` · Tier `Both`
 · Built with ⚛️ Qiskit for the VTU-QFF Hackathon
 
-[⬆ Back to Top](#Nexora)
+[⬆ Back to Top](#nexora)
 
 </div>
