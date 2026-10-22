@@ -20,8 +20,10 @@ TEAL, SLATE, AMBER, RED = "#0b7c88", "#2f3f5c", "#c4701b", "#c0463a"
 
 st.markdown(
     "<h1 style='margin-bottom:0'>HEATSHIELD-Q</h1>"
-    "<p style='color:#56667c;margin-top:2px'>Quantum allocation of limited campus cooling resources "
-    "with QAOA (Qiskit) compared against classical methods.</p>", unsafe_allow_html=True)
+    "<p style='color:#56667c;margin-top:2px'>Explore how classical optimization and QAOA allocate limited cooling resources across campus zones. "
+    "Results are model estimates for demonstration and research; they are not real-world cooling recommendations.</p>",
+    unsafe_allow_html=True,
+)
 
 
 @st.cache_resource(show_spinner=False)
