@@ -1,0 +1,850 @@
+<!doctype html><html lang="en"><head>
+<title>HEATSHIELD-Q</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a thermal survey of the campus. The map is the hero; controls sit beside it,
+   results and the quantum internals read top to bottom underneath. Heat is the data colour, teal is "cooled". */
+:root{
+  --bg:#eef2f6; --surface:#fbfcfd; --surface2:#e3e9f0; --ink:#0f1b2d; --muted:#56667c; --line:#d0d9e5;
+  --cool:#0b7c88; --cool-ink:#ffffff; --cool-soft:#d3edf0;
+  --exact:#2f3f5c; --greedy:#c4701b; --over:#c0463a;
+  --r1:#5a79d6; --r2:#9a69d3; --r3:#d85a8f; --r4:#ee7f3b; --r5:#e9a81f;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a111c; --surface:#111a29; --surface2:#1a2639; --ink:#e8eef7; --muted:#92a2b8; --line:#26354b;
+    --cool:#45cbd6; --cool-ink:#06202a; --cool-soft:#11353e;
+    --exact:#a9bbd9; --greedy:#f09a45; --over:#f07a68;
+    --r1:#7b97f0; --r2:#b48cf0; --r3:#f07aa8; --r4:#ff9a55; --r5:#ffc94d;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a111c; --surface:#111a29; --surface2:#1a2639; --ink:#e8eef7; --muted:#92a2b8; --line:#26354b;
+  --cool:#45cbd6; --cool-ink:#06202a; --cool-soft:#11353e;
+  --exact:#a9bbd9; --greedy:#f09a45; --over:#f07a68;
+  --r1:#7b97f0; --r2:#b48cf0; --r3:#f07aa8; --r4:#ff9a55; --r5:#ffc94d;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.01em;margin:0;text-wrap:balance}
+p{margin:0}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* masthead */
+.mast{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.14em;display:flex;align-items:center;gap:10px}
+.brand i{display:inline-block;width:11px;height:11px;border-radius:50%;background:linear-gradient(135deg,var(--r5),var(--r3) 55%,var(--cool));}
+.tag{font:500 12px var(--mono);color:var(--muted);letter-spacing:.04em}
+.intro{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:end;padding-block:28px 22px}
+.intro h1{font-size:clamp(30px,4.6vw,52px);line-height:1.04}
+.intro h1 em{font-style:normal;color:var(--cool)}
+.intro p{color:var(--muted);max-width:60ch}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h2{font-size:18px}
+.card .sub{color:var(--muted);font-size:13px;margin-top:3px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+
+.main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+.seg{display:inline-flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);white-space:nowrap}
+.seg button[aria-checked="true"],.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.seg button .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+
+.totals{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:10px}
+.totals div{min-width:0}
+.totals b{display:block;font:500 22px/1.15 var(--mono);font-variant-numeric:tabular-nums}
+.totals span{font-size:12px;color:var(--muted)}
+.mapbox{background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+svg{display:block;max-width:100%}
+.map{width:100%;height:auto}
+.map .road{stroke:var(--line);stroke-width:10;stroke-linecap:round;fill:none;opacity:.8}
+.map .tile{transition:fill .35s,stroke .35s}
+.map .zname{font:600 14.5px var(--display);fill:var(--ink)}
+.map .zmeta{font:400 10.5px var(--mono);fill:var(--muted)}
+.map .zval{font:500 12px var(--mono);fill:var(--ink)}
+.map .note{font:400 10px var(--mono);fill:var(--muted);letter-spacing:.06em}
+.map .snow{stroke:var(--cool);stroke-width:2;stroke-linecap:round;fill:none;transition:opacity .3s}
+.map .halo{fill:none;stroke:var(--cool);stroke-width:1.5;transition:opacity .3s}
+@media (prefers-reduced-motion:no-preference){
+  .map .halo.on{animation:halo 2.6s ease-out infinite}
+  @keyframes halo{0%{transform:scale(.7);opacity:.7}100%{transform:scale(1.25);opacity:0}}
+}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:12px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{display:inline-block;width:14px;height:10px;border-radius:3px}
+.ramp{display:inline-flex;gap:2px}
+.ramp .sw{width:16px}
+
+/* scenario */
+.field{display:grid;gap:4px}
+.field label,.zc label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.field label b,.zc label b{font:500 12px var(--mono);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--cool);height:20px;margin:0;cursor:pointer}
+.budget{padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.budget .big{font:500 13px var(--body)}
+.zrow{padding:10px 0;border-bottom:1px solid var(--line)}
+.zrow:last-of-type{border-bottom:0}
+.zrow h3{font:600 14px var(--display);display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.zrow h3 i{width:10px;height:10px;border-radius:3px;background:var(--rk)}
+.zgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.runbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
+.runbar .lbl{font-size:12px;color:var(--muted)}
+.btn{background:var(--cool);color:var(--cool-ink);border:0;border-radius:9px;padding:8px 14px;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.06)}
+.btn.ghost{background:var(--surface2);color:var(--ink)}
+.status{font:400 12px var(--mono);color:var(--muted);margin-left:auto}
+
+/* results */
+.section{margin-top:34px}
+.section>h2{font-size:clamp(22px,2.6vw,30px);margin-bottom:6px}
+.section>p.lead{color:var(--muted);max-width:68ch;margin-bottom:16px}
+.methods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.m h3{font-size:16px;display:flex;align-items:center;gap:8px}
+.m h3 .dot{width:10px;height:10px;border-radius:50%;background:var(--mc)}
+.m .how{font-size:12.5px;color:var(--muted);margin:3px 0 12px;min-height:38px}
+.m .val{font:500 34px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.m .val small{font-size:13px;color:var(--muted);margin-left:6px}
+.bar{height:6px;background:var(--surface2);border-radius:4px;margin:10px 0 12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--mc);border-radius:4px;transition:width .5s}
+.kv{display:flex;gap:18px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.kv b{font:500 13px var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;min-height:26px}
+.chip{font-size:12px;background:var(--cool-soft);color:var(--ink);border-radius:6px;padding:2px 8px}
+.chip.none{background:var(--surface2);color:var(--muted)}
+
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.chart .cap{font-size:12.5px;color:var(--muted);margin:2px 0 10px}
+.chart svg{width:100%;height:auto}
+.ct{font:400 10.5px var(--mono);fill:var(--muted)}
+.ct.k{fill:var(--ink)}
+.ax{stroke:var(--line);stroke-width:1}
+.grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:16px;margin-top:16px}
+.stat b{display:block;font:500 26px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--muted);display:block;margin-top:4px}
+.stat em{font-style:normal;font:400 12px var(--mono);color:var(--muted)}
+
+/* how it works */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;align-items:start}
+.steps{list-style:none;padding:0;margin:0;display:grid;gap:12px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:10px;font-size:14px}
+.steps li::before{content:counter(s);font:500 12px var(--mono);width:24px;height:24px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;margin-top:1px}
+.steps b{font-weight:600}
+.steps code,.formula{font-family:var(--mono);font-size:12.5px;background:var(--surface2);border-radius:6px;padding:1px 6px}
+.formula{display:block;padding:10px 12px;margin-top:6px;line-height:1.7;overflow-x:auto;white-space:pre}
+.scroll{overflow-x:auto}
+.circ{max-width:none}
+.circ .w{stroke:var(--muted);stroke-width:1}
+.circ .g{fill:var(--surface2);stroke:var(--line)}
+.circ .gc{fill:var(--cool-soft);stroke:var(--cool)}
+.circ text{font:500 11px var(--mono);fill:var(--ink)}
+.circ text.m{fill:var(--muted);font-weight:400}
+table.hm{border-collapse:separate;border-spacing:2px;font:400 11px var(--mono);width:100%;min-width:430px}
+table.hm th{font-weight:500;color:var(--muted);padding:2px 4px;text-align:center}
+table.hm td{text-align:center;padding:7px 2px;border-radius:5px;font-variant-numeric:tabular-nums}
+.params{display:flex;flex-wrap:wrap;gap:6px 14px;font:400 12px var(--mono);color:var(--muted);margin-top:10px}
+.params b{color:var(--ink);font-weight:500}
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 18px}
+summary{cursor:pointer;padding:12px 0;font:600 16px var(--display);list-style-position:inside}
+.codebar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 0 10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+pre.code{margin:0 0 14px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;max-height:520px;font:400 12px/1.6 var(--mono);color:var(--ink)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
+.notes p{font-size:14px;color:var(--muted)}
+.notes b{display:block;color:var(--ink);font:600 15px var(--display);margin-bottom:4px}
+footer{margin-top:36px;padding-top:14px;border-top:1px solid var(--line);font:400 12px var(--mono);color:var(--muted)}
+
+@media (max-width:900px){
+  .intro,.main,.two{grid-template-columns:minmax(0,1fr)}
+  .methods{grid-template-columns:minmax(0,1fr)}
+  .m .how{min-height:0}
+}
+@media (max-width:480px){
+  .zgrid{gap:8px}
+  .seg button{padding:6px 9px;font-size:12.5px}
+  .status{margin-left:0;width:100%}
+}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="brand"><i></i>HEATSHIELD-Q</div>
+    <div class="tag">Qiskit · QAOA · campus heat relief</div>
+  </header>
+
+  <section class="intro">
+    <h1>Where should limited cooling go <em>first</em>?</h1>
+    <p>Extreme heat reaches every part of a campus, but fans, misting sets and shaded rest areas are limited. HEATSHIELD-Q picks which zones get cooling by weighing population, heat risk and what each zone needs, using a QAOA circuit, and checks the answer against classical methods. Change the scenario and the circuit re-runs.</p>
+  </section>
+
+  <section class="main">
+    <div class="card">
+      <div class="head">
+        <div>
+          <h2>Campus allocation</h2>
+          <p class="sub">Showing the zones each method cools with a budget of <span class="mono" id="bTxt">7</span> units.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Allocation shown on the map" id="methodSeg">
+          <button type="button" data-m="exact" aria-pressed="false"><span class="dot" style="background:var(--exact)"></span>Exact</button>
+          <button type="button" data-m="greedy" aria-pressed="false"><span class="dot" style="background:var(--greedy)"></span>Greedy</button>
+          <button type="button" data-m="qaoa" aria-pressed="true"><span class="dot" style="background:var(--cool)"></span>QAOA</button>
+        </div>
+      </div>
+      <div class="totals" id="totals"></div>
+      <div class="mapbox"><svg class="map" id="map" viewBox="0 0 640 420" role="img" aria-label="Campus plan with six zones coloured by heat risk"></svg></div>
+      <div class="legend">
+        <span>Heat risk <span class="ramp"><i class="sw" style="background:var(--r1)"></i><i class="sw" style="background:var(--r2)"></i><i class="sw" style="background:var(--r3)"></i><i class="sw" style="background:var(--r4)"></i><i class="sw" style="background:var(--r5)"></i></span> 1 to 5</span>
+        <span><i class="sw" style="background:var(--cool)"></i>Cooled zone</span>
+        <span class="mono">exposure = people × risk ÷ 100</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="head"><div><h2>Scenario</h2><p class="sub">Edit any value. Results update after a moment.</p></div></div>
+      <div class="field budget">
+        <label for="budget">Cooling units available <b id="budgetV">7</b></label>
+        <input type="range" id="budget" min="3" max="12" step="1" value="7">
+      </div>
+      <div id="zrows"></div>
+      <div class="runbar">
+        <span class="lbl">QAOA layers</span>
+        <div class="seg" role="group" aria-label="QAOA layers" id="pSeg">
+          <button type="button" data-p="1" aria-pressed="false">1</button>
+          <button type="button" data-p="2" aria-pressed="false">2</button>
+          <button type="button" data-p="3" aria-pressed="true">3</button>
+          <button type="button" data-p="4" aria-pressed="false">4</button>
+        </div>
+        <button type="button" class="btn" id="rerun">Run again</button>
+        <span class="status" id="status">Starting…</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Quantum versus classical</h2>
+    <p class="lead">Three methods choose which zones to cool. Value covered is the total exposure (people × risk ÷ 100) of the cooled zones, within the unit budget.</p>
+    <div class="methods" id="methods"></div>
+  </section>
+
+  <section class="section">
+    <h2>Inside the QAOA run</h2>
+    <p class="lead">The circuit is simulated exactly on a classical computer, so these are noise-free numbers for 6 qubits, one per zone.</p>
+    <div class="charts">
+      <div class="card chart"><h2>Training</h2><p class="cap">The optimiser tunes the circuit angles to lower the expected energy ⟨H<sub>C</sub>⟩.</p><svg id="chA" viewBox="0 0 420 240" role="img" aria-label="Energy against circuit evaluations"></svg></div>
+      <div class="card chart"><h2>What the circuit measures</h2><p class="cap">Most likely allocations after training. The dashed line marks the chance of each by random guessing.</p><svg id="chB" viewBox="0 0 420 270" role="img" aria-label="Probability of the most likely allocations"></svg><div class="legend"><span><i class="sw" style="background:var(--cool)"></i>Optimal</span><span><i class="sw" style="background:var(--cool);opacity:.45"></i>Within budget</span><span><i class="sw" style="background:var(--over)"></i>Over budget</span></div></div>
+      <div class="card chart"><h2>Best found as shots add up</h2><p class="cap">Each shot is one measurement. Higher is better; each line keeps the best allocation within budget so far.</p><svg id="chC" viewBox="0 0 420 270" role="img" aria-label="Best value found against number of shots"></svg><div class="legend"><span><i class="sw" style="background:var(--cool)"></i>QAOA</span><span><i class="sw" style="background:var(--muted)"></i>Random guess</span></div></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="section">
+    <h2>How the problem becomes a circuit</h2>
+    <p class="lead">The cooling choice is written as an energy function. QAOA looks for the bit pattern with the lowest energy.</p>
+    <div class="two">
+      <div class="card">
+        <ol class="steps">
+          <li><div><b>Pick zones with bits.</b> Qubit <code>i</code> is 1 when zone <code>i</code> gets cooling. Six zones need six qubits.</div></li>
+          <li><div><b>Reward exposure covered, punish overspending.</b> With spare budget <code>h = B − Σcᵢxᵢ</code>:
+            <span class="formula">f(x) = −Σ vᵢ xᵢ − L1·h + L2·h²</span>
+            Going over budget (h &lt; 0) costs quadratically. No extra qubits are needed for the budget.</div></li>
+          <li><div><b>Convert to an Ising Hamiltonian</b> with <code>x = (1 − Z)/2</code>. Single-qubit fields and two-qubit couplings are shown on the right.</div></li>
+          <li><div><b>Build the circuit.</b> Start in an equal superposition, then repeat a cost layer and a mixer layer.</div></li>
+          <li><div><b>Optimise the angles</b> on a classical computer, <b>measure</b> the circuit many times and keep the best allocation within budget.</div></li>
+        </ol>
+        <p class="sub" style="margin-top:14px">Penalty weights in this run: <span class="mono" id="pen"></span>. They are chosen so that the lowest-energy state is the true optimum.</p>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:8px">Hamiltonian: fields on the diagonal, couplings off it</h3>
+        <div class="scroll"><table class="hm" id="hm"></table></div>
+        <p class="sub" style="margin-top:8px">A positive coupling pushes two zones apart: they compete for the same units, so cooling both is discouraged.</p>
+        <h3 style="font-size:15px;margin:18px 0 8px">Circuit</h3>
+        <div class="scroll"><svg class="circ" id="circ" role="img" aria-label="QAOA circuit diagram"></svg></div>
+        <div class="params" id="params"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <details>
+      <summary>Qiskit code (heatshield_q.py)</summary>
+      <div class="codebar"><span>Runs the same model with Qiskit 2.x, scipy and numpy: <span class="mono">pip install qiskit scipy numpy</span></span><button type="button" class="btn ghost" id="copyCode">Copy code</button></div>
+      <pre class="code" id="codeBox"></pre>
+    </details>
+  </section>
+
+  <section class="section">
+    <div class="notes">
+      <div><b>What this shows</b><p>A complete QAOA workflow for a resource allocation problem: formulation, Hamiltonian, circuit, optimisation, readout and a classical comparison.</p></div>
+      <div><b>What it does not show</b><p>At 6 zones, brute force takes microseconds, so there is no quantum speed-up here. The value is in the method, which carries over to larger campuses and real devices.</p></div>
+      <div><b>Reading the numbers</b><p>Exposure values come from the sample inputs on this page. QAOA picks up the optimum several times more often than random guessing, and 1,024 shots are enough to find it.</p></div>
+    </div>
+  </section>
+
+  <footer>HEATSHIELD-Q · statevector simulation in the browser, matching the Qiskit script</footer>
+</div>
+
+<script type="text/plain" id="codeSrc">
+"""
+HEATSHIELD-Q
+Quantum allocation of limited cooling resources across campus zones (Qiskit + QAOA).
+
+Problem
+-------
+Each campus zone i has a population p_i, a heat-risk level r_i (1-5) and a
+cooling-resource requirement c_i (units: fans / misting sets / shaded rest area).
+Only B units are available. Choose x_i in {0,1} (zone gets cooling or not) to
+
+    maximise   sum_i  v_i x_i          with  v_i = p_i * r_i / 100   (people-risk exposure covered)
+    subject to sum_i  c_i x_i <= B
+
+QUBO with unbalanced penalisation (no slack qubits, one qubit per zone)
+-----------------------------------------------------------------------
+Let h = B - sum_i c_i x_i  (spare budget; h < 0 means the budget is broken).
+
+    f(x) = - sum_i (v_i / v_max) x_i  +  ( -L1 * h + L2 * h^2 )
+
+Over-spending is punished quadratically, a little spare budget is not punished.
+L1, L2 are picked automatically so that the lowest-energy state of f is the true
+optimum (checked against exhaustive search). f is converted to an Ising
+Hamiltonian (x = (1 - Z) / 2) and minimised with QAOA. The result is compared with
+two classical methods: exhaustive search (exact optimum) and a greedy
+value-per-cost heuristic, and with plain random guessing.
+
+Run:   pip install qiskit scipy numpy
+       python heatshield_q.py
+"""
+
+import itertools
+import json
+import numpy as np
+from scipy.optimize import minimize
+
+from qiskit.circuit.library import QAOAAnsatz
+from qiskit.quantum_info import SparsePauliOp, Statevector
+from qiskit.primitives import StatevectorEstimator
+
+# ----------------------------------------------------------------------------
+# 1. Campus data (edit freely)
+# ----------------------------------------------------------------------------
+ZONES = [
+    # name,               population, heat risk (1-5), cooling units needed
+    ("Central Library",        400, 2, 2),
+    ("Hostel Block A",         650, 4, 3),
+    ("Sports Ground",          300, 5, 2),
+    ("Main Auditorium",        500, 3, 3),
+    ("Cafeteria Court",        350, 4, 1),
+    ("Engineering Block",      600, 3, 3),
+]
+BUDGET = 7          # cooling units available
+P_LAYERS = 3        # QAOA depth p
+N_RESTARTS = 8      # random restarts of the classical optimiser
+SHOTS = 1024        # measurement shots used to read out the QAOA state
+SEED = 7
+
+names = [z[0] for z in ZONES]
+pop = np.array([z[1] for z in ZONES], dtype=float)
+risk = np.array([z[2] for z in ZONES], dtype=float)
+cost = np.array([z[3] for z in ZONES], dtype=int)
+value = pop * risk / 100.0
+vn = value / value.max()                      # rewards scaled to (0, 1]
+n = len(ZONES)                                # = number of qubits
+
+
+# ----------------------------------------------------------------------------
+# 2. Classical baselines and brute-force tables
+# ----------------------------------------------------------------------------
+ALL = [np.array(b) for b in itertools.product([0, 1], repeat=n)]   # x_0 is the left-most bit
+
+
+def exact_best():
+    best, best_x = -1.0, None
+    for x in ALL:
+        if cost @ x <= BUDGET and value @ x > best:
+            best, best_x = float(value @ x), tuple(int(v) for v in x)
+    return best, best_x
+
+
+def greedy_best():
+    order = np.argsort(-value / cost, kind="stable")
+    used, x = 0, np.zeros(n, dtype=int)
+    for i in order:
+        if used + cost[i] <= BUDGET:
+            x[i], used = 1, used + cost[i]
+    return float(value @ x), tuple(int(v) for v in x)
+
+
+# ----------------------------------------------------------------------------
+# 3. QUBO -> Ising Hamiltonian
+# ----------------------------------------------------------------------------
+def qubo_energy(x, l1, l2):
+    h = BUDGET - cost @ x
+    return float(-(vn @ x) - l1 * h + l2 * h * h)
+
+
+def pick_penalties(ex_val):
+    """First (L1, L2) in a preference list whose QUBO ground state is the exact optimum."""
+    for l1, l2 in [(0.2, 0.15), (0.2, 0.2), (0.2, 0.3), (0.3, 0.3), (0.1, 0.3), (0.1, 0.6),
+                   (0.4, 0.6), (0.0, 0.6), (0.5, 1.0), (0.5, 2.0), (0.5, 4.0)]:
+        g = min(ALL, key=lambda x: qubo_energy(x, l1, l2))
+        if cost @ g <= BUDGET and abs(value @ g - ex_val) < 1e-9:
+            return l1, l2
+    raise RuntimeError("no penalty pair found; raise the L2 values")
+
+
+def ising_operator(l1, l2):
+    """f(x) as a SparsePauliOp. Qiskit label strings have qubit 0 on the right."""
+    const = -l1 * BUDGET + l2 * BUDGET ** 2
+    a = -vn + l1 * cost + l2 * (cost ** 2 - 2 * BUDGET * cost)       # linear x_i terms
+    terms = []                                                         # (label, coeff)
+    z_lin = np.zeros(n)
+    for i in range(n):
+        const += a[i] / 2                                              # a x = a/2 - a/2 Z
+        z_lin[i] -= a[i] / 2
+    for i in range(n):
+        for j in range(i + 1, n):
+            b = 2 * l2 * cost[i] * cost[j]                             # b x_i x_j
+            const += b / 4
+            z_lin[i] -= b / 4
+            z_lin[j] -= b / 4
+            lab = ["I"] * n
+            lab[i] = lab[j] = "Z"
+            terms.append(("".join(lab[::-1]), b / 4))
+    for i in range(n):
+        lab = ["I"] * n
+        lab[i] = "Z"
+        terms.append(("".join(lab[::-1]), z_lin[i]))
+    terms.append(("I" * n, const))
+    op = SparsePauliOp.from_list(terms).simplify()
+    energies = [qubo_energy(x, l1, l2) for x in ALL]
+    scale = 10.0 / (max(energies) - min(energies))                     # keeps QAOA angles friendly
+    return op * scale, scale
+
+
+# ----------------------------------------------------------------------------
+# 4. QAOA
+# ----------------------------------------------------------------------------
+def run_qaoa(H, p=P_LAYERS, restarts=N_RESTARTS, seed=SEED):
+    ansatz = QAOAAnsatz(cost_operator=H, reps=p).decompose(reps=2)
+    estimator = StatevectorEstimator()
+    rng = np.random.default_rng(seed)
+
+    def objective(theta):
+        return float(estimator.run([(ansatz, H, theta)]).result()[0].data.evs)
+
+    best = None
+    for _ in range(restarts):
+        theta0 = np.concatenate([rng.uniform(0.1, 1.5, p),      # betas  (mixer angles)
+                                 rng.uniform(0.05, 1.2, p)])    # gammas (cost angles)
+        res = minimize(objective, theta0, method="COBYLA", options={"maxiter": 300})
+        if best is None or res.fun < best.fun:
+            best = res
+    state = Statevector(ansatz.assign_parameters(best.x))
+    return best, state.probabilities_dict()
+
+
+def bits_of(bitstring):
+    """Qiskit bitstring (qubit 0 on the right) -> tuple (x_0, x_1, ...)."""
+    return tuple(int(c) for c in bitstring[::-1])
+
+
+def main():
+    ex_val, ex_x = exact_best()
+    gr_val, gr_x = greedy_best()
+    l1, l2 = pick_penalties(ex_val)
+    H, scale = ising_operator(l1, l2)
+
+    # the Hamiltonian must reproduce the QUBO energies (sanity check of the Ising conversion)
+    for x in ALL[:: max(1, len(ALL) // 8)]:
+        idx = int("".join(str(int(b)) for b in x[::-1]), 2)
+        e_ising = Statevector.from_int(idx, 2 ** n).expectation_value(H).real
+        assert abs(e_ising - qubo_energy(x, l1, l2) * scale) < 1e-9, "Ising conversion mismatch"
+
+    res, probs = run_qaoa(H)
+    dist = {bits_of(bs): pr for bs, pr in probs.items()}
+
+    feasible = {x: pr for x, pr in dist.items() if cost @ np.array(x) <= BUDGET}
+    p_opt = dist.get(ex_x, 0.0)
+    p_feas = sum(feasible.values())
+    mean_val = sum(pr * (value @ np.array(x)) for x, pr in feasible.items()) / p_feas
+    unif_feas = [x for x in ALL if cost @ x <= BUDGET]
+    unif_mean = float(np.mean([value @ x for x in unif_feas]))
+
+    # finite-shot readout, as on hardware: keep the best budget-feasible sample
+    rng = np.random.default_rng(SEED)
+    keys = list(dist.keys())
+    probs_arr = np.array([dist[k] for k in keys])
+    draws = rng.choice(len(keys), size=SHOTS, p=probs_arr / probs_arr.sum())
+    best_feasible = (-1.0, None)
+    for d in draws:
+        x = keys[d]
+        if cost @ np.array(x) <= BUDGET and value @ np.array(x) > best_feasible[0]:
+            best_feasible = (float(value @ np.array(x)), x)
+
+    energies = [qubo_energy(x, l1, l2) * scale for x in ALL]
+    print(f"Qubits: {n} (one per zone), QAOA depth p={P_LAYERS}, shots={SHOTS}, penalties L1={l1}, L2={l2}")
+    print(f"<H> after QAOA: {res.fun:.3f}   (random guess {np.mean(energies):.3f}, true minimum {min(energies):.3f})\n")
+    print(f"{'Method':<26}{'Value covered':>14}{'% of optimum':>14}   Zones cooled")
+    for label, val, x in [("Exact (exhaustive)", ex_val, ex_x),
+                          ("Greedy value/cost", gr_val, gr_x),
+                          (f"QAOA (best of {SHOTS} shots)", best_feasible[0], best_feasible[1])]:
+        chosen = ", ".join(names[i] for i in range(n) if x[i])
+        print(f"{label:<26}{val:>14.2f}{100 * val / ex_val:>13.1f}%   {chosen}")
+    print(f"\nP(one shot = optimal allocation): QAOA {p_opt:.4f}   vs random guess {1 / 2 ** n:.4f}")
+    print(f"P(one shot within budget)       : QAOA {p_feas:.3f}    vs random guess {len(unif_feas) / 2 ** n:.3f}")
+    print(f"Mean value of feasible shots    : QAOA {mean_val:.1f}     vs random guess {unif_mean:.1f}")
+    print("\nMost likely outcomes:")
+    for x, pr in sorted(dist.items(), key=lambda kv: -kv[1])[:5]:
+        print(f"  {''.join(map(str, x))}   p={pr:.3f}   value={value @ np.array(x):5.1f}   cost={int(cost @ np.array(x))}/{BUDGET}")
+
+    with open("heatshield_q_result.json", "w") as f:
+        json.dump({"penalties": [l1, l2], "scale": scale, "exact": [ex_val, ex_x], "greedy": [gr_val, gr_x],
+                   "qaoa_best": [best_feasible[0], best_feasible[1]], "p_opt": p_opt, "p_feasible": p_feas,
+                   "mean_value_feasible": mean_val, "energy": res.fun,
+                   "beta_gamma": list(map(float, res.x))}, f, indent=2)
+
+
+if __name__ == "__main__":
+    main()
+</script>
+<script>
+// <core>
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const PENALTIES=[[0.2,0.15],[0.2,0.2],[0.2,0.3],[0.3,0.3],[0.1,0.3],[0.1,0.6],[0.4,0.6],[0.0,0.6],[0.5,1.0],[0.5,2.0],[0.5,4.0]];
+
+function buildProblem(zs,B){
+  const n=zs.length,N=1<<n;
+  const value=zs.map(z=>z.pop*z.risk/100),cost=zs.map(z=>z.cost);
+  const vmax=Math.max(...value),vn=value.map(v=>v/vmax);
+  const val=new Float64Array(N),cst=new Int32Array(N);
+  for(let i=0;i<N;i++){let v=0,c=0;for(let k=0;k<n;k++)if((i>>k)&1){v+=value[k];c+=cost[k]}val[i]=v;cst[i]=c}
+  let ex=0;for(let i=0;i<N;i++)if(cst[i]<=B&&val[i]>val[ex]+1e-9)ex=i;
+  // greedy by value per unit
+  const order=[...Array(n).keys()].sort((a,b)=>value[b]/cost[b]-value[a]/cost[a]||a-b);
+  let gr=0,used=0;for(const k of order)if(used+cost[k]<=B){gr|=1<<k;used+=cost[k]}
+  const energy=(l1,l2)=>{const E=new Float64Array(N);for(let i=0;i<N;i++){let s=0;for(let k=0;k<n;k++)if((i>>k)&1)s+=vn[k];const h=B-cst[i];E[i]=-s-l1*h+l2*h*h}return E};
+  let pen=PENALTIES[PENALTIES.length-1],E=null,matched=false;
+  for(const p of PENALTIES){const e=energy(p[0],p[1]);let g=0;for(let i=1;i<N;i++)if(e[i]<e[g])g=i;
+    if(cst[g]<=B&&Math.abs(val[g]-val[ex])<1e-9){pen=p;E=e;matched=true;break}}
+  if(!E)E=energy(pen[0],pen[1]);
+  let mn=Infinity,mx=-Infinity,sum=0;for(let i=0;i<N;i++){mn=Math.min(mn,E[i]);mx=Math.max(mx,E[i]);sum+=E[i]}
+  const scale=10/(mx-mn);for(let i=0;i<N;i++)E[i]*=scale;
+  const [l1,l2]=pen;
+  // Ising fields and couplings (scaled)
+  const a=vn.map((v,i)=>-v+l1*cost[i]+l2*(cost[i]*cost[i]-2*B*cost[i]));
+  const J=[],h=new Array(n).fill(0);
+  for(let i=0;i<n;i++){J.push(new Array(n).fill(0));h[i]=-a[i]/2}
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const b=2*l2*cost[i]*cost[j];J[i][j]=J[j][i]=b/4*scale;h[i]-=b/4;h[j]-=b/4}
+  for(let i=0;i<n;i++)h[i]*=scale;
+  return{n,N,B,value,cost,vn,val,cst,ex,gr,E,scale,l1,l2,matched,h,J,Emin:mn*scale,Emean:sum/N*scale};
+}
+
+function makeQAOA(n,E){
+  const N=1<<n,re=new Float64Array(N),im=new Float64Array(N),amp=1/Math.sqrt(N);
+  function run(beta,gamma){
+    re.fill(amp);im.fill(0);
+    for(let l=0;l<beta.length;l++){
+      const g=gamma[l];
+      for(let i=0;i<N;i++){const th=g*E[i],c=Math.cos(th),s=Math.sin(th),r=re[i],m=im[i];re[i]=r*c+m*s;im[i]=m*c-r*s}
+      const cb=Math.cos(beta[l]),sb=Math.sin(beta[l]);
+      for(let k=0;k<n;k++){const bit=1<<k;
+        for(let i=0;i<N;i++){if(i&bit)continue;const j=i|bit,r0=re[i],i0=im[i],r1=re[j],i1=im[j];
+          re[i]=cb*r0+sb*i1;im[i]=cb*i0-sb*r1;re[j]=cb*r1+sb*i0;im[j]=cb*i1-sb*r0}}
+    }
+  }
+  function expect(beta,gamma){run(beta,gamma);let s=0;for(let i=0;i<N;i++)s+=E[i]*(re[i]*re[i]+im[i]*im[i]);return s}
+  function probs(beta,gamma){run(beta,gamma);const p=new Float64Array(N);for(let i=0;i<N;i++)p[i]=re[i]*re[i]+im[i]*im[i];return p}
+  return{expect,probs};
+}
+
+function nelderMead(f,x0,maxEval,step){
+  const d=x0.length;let evals=0;
+  const F=x=>{evals++;return f(x)};
+  let S=[x0.slice()];for(let i=0;i<d;i++){const x=x0.slice();x[i]+=step;S.push(x)}
+  let V=S.map(F);
+  while(evals<maxEval){
+    const idx=[...V.keys()].sort((a,b)=>V[a]-V[b]);S=idx.map(i=>S[i]);V=idx.map(i=>V[i]);
+    if(Math.abs(V[d]-V[0])<1e-10)break;
+    const c=new Array(d).fill(0);for(let i=0;i<d;i++)for(let j=0;j<d;j++)c[j]+=S[i][j]/d;
+    const pt=(t)=>c.map((v,j)=>v+t*(S[d][j]-v));
+    const xr=pt(-1),fr=F(xr);
+    if(fr<V[0]){const xe=pt(-2),fe=F(xe);if(fe<fr){S[d]=xe;V[d]=fe}else{S[d]=xr;V[d]=fr}}
+    else if(fr<V[d-1]){S[d]=xr;V[d]=fr}
+    else{const xc=fr<V[d]?pt(-0.5):pt(0.5),fc=F(xc);
+      if(fc<Math.min(fr,V[d])){S[d]=xc;V[d]=fc}
+      else{for(let i=1;i<=d;i++){S[i]=S[i].map((v,j)=>S[0][j]+0.5*(v-S[0][j]));V[i]=F(S[i])}}}
+  }
+  let b=0;for(let i=1;i<=d;i++)if(V[i]<V[b])b=i;
+  return{x:S[b],f:V[b]};
+}
+
+function trainQAOA(prob,p,seed,restarts,onRestart){
+  const q=makeQAOA(prob.n,prob.E),rng=mulberry32(seed);
+  let best={f:Infinity,x:null},g=Infinity;const hist=[];
+  const f=x=>{const v=q.expect(x.slice(0,p),x.slice(p));if(v<g)g=v;hist.push(g);return v};
+  const steps=[];
+  for(let r=0;r<restarts;r++)steps.push(()=>{
+    const x0=[];for(let i=0;i<p;i++)x0.push(0.1+1.4*rng());for(let i=0;i<p;i++)x0.push(0.05+1.15*rng());
+    const res=nelderMead(f,x0,600,0.3);if(res.f<best.f)best=res;
+    if(onRestart)onRestart(r+1,restarts,hist,best);
+  });
+  return{steps,finish(){
+    const beta=best.x.slice(0,p),gamma=best.x.slice(p),pr=q.probs(beta,gamma);
+    return{beta,gamma,probs:pr,energy:best.f,hist};
+  }};
+}
+
+function readout(prob,probs,seed,shots){
+  const rng=mulberry32(seed),N=prob.N,cum=new Float64Array(N);let s=0;
+  for(let i=0;i<N;i++){s+=probs[i];cum[i]=s}
+  const qBest=[],rBest=[];let qb=0,rb=0,qIdx=0,rIdx=0;
+  for(let t=0;t<shots;t++){
+    const u=rng()*s;let lo=0,hi=N-1;while(lo<hi){const m=(lo+hi)>>1;if(cum[m]<u)lo=m+1;else hi=m}
+    if(prob.cst[lo]<=prob.B&&prob.val[lo]>qb){qb=prob.val[lo];qIdx=lo}
+    const r=Math.floor(rng()*N);
+    if(prob.cst[r]<=prob.B&&prob.val[r]>rb){rb=prob.val[r];rIdx=r}
+    qBest.push(qb);rBest.push(rb);
+  }
+  let pFeas=0,mean=0,uF=0,uMean=0;
+  for(let i=0;i<N;i++)if(prob.cst[i]<=prob.B){pFeas+=probs[i];mean+=probs[i]*prob.val[i];uF++;uMean+=prob.val[i]}
+  return{qIdx,rIdx,qBest,rBest,pOpt:probs[prob.ex],pFeas,meanFeas:pFeas>0?mean/pFeas:0,uFeas:uF/N,uMean:uF?uMean/uF:0,uOpt:1/N};
+}
+// </core>
+
+// ---------- app ----------
+const NAMES=['Central Library','Hostel Block A','Sports Ground','Main Auditorium','Cafeteria Court','Engineering Block'];
+const CODES=['LB','HB','SG','MA','CC','EB'];
+const BOX=[[270,36,170,104],[40,196,200,184],[270,300,330,84],[460,36,160,224],[270,170,150,100],[40,36,200,126]];
+const zones=[
+  {pop:400,risk:2,cost:2},{pop:650,risk:4,cost:3},{pop:300,risk:5,cost:2},
+  {pop:500,risk:3,cost:3},{pop:350,risk:4,cost:1},{pop:600,risk:3,cost:3}];
+const S={B:7,p:3,seed:7,view:'qaoa',prob:null,res:null,ro:null,runId:0,timer:null};
+const $=id=>document.getElementById(id);
+const fmt=(v,d=1)=>v.toFixed(d);
+const bitsOf=i=>[...Array(6).keys()].filter(k=>(i>>k)&1);
+const covered=(idx)=>bitsOf(idx).reduce((s,k)=>s+zones[k].pop,0);
+const rk=r=>`var(--r${r})`;
+
+// zone controls
+function buildRows(){
+  $('zrows').innerHTML=zones.map((z,i)=>`
+   <div class="zrow" style="--rk:${rk(z.risk)}" id="zr${i}">
+     <h3><i></i>${NAMES[i]}</h3>
+     <div class="zgrid">
+       <div class="zc"><label for="pop${i}">People <b id="popV${i}">${z.pop}</b></label><input type="range" id="pop${i}" min="100" max="1000" step="50" value="${z.pop}" data-i="${i}" data-k="pop"></div>
+       <div class="zc"><label for="risk${i}">Heat risk <b id="riskV${i}">${z.risk}</b></label><input type="range" id="risk${i}" min="1" max="5" step="1" value="${z.risk}" data-i="${i}" data-k="risk"></div>
+       <div class="zc"><label for="cost${i}">Units <b id="costV${i}">${z.cost}</b></label><input type="range" id="cost${i}" min="1" max="4" step="1" value="${z.cost}" data-i="${i}" data-k="cost"></div>
+     </div></div>`).join('');
+}
+
+// map
+function buildMap(){
+  const svg=$('map');let h='';
+  h+=`<path class="road" d="M255 20 V400 M20 168 H620 M445 20 V285 M255 285 H620"/>`;
+  BOX.forEach((b,i)=>{
+    const [x,y,w,hh]=b;
+    h+=`<g id="mz${i}">
+      <rect class="tile" id="mt${i}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="12"/>
+      <circle class="halo" id="mh${i}" cx="${x+w-26}" cy="${y+hh-26}" r="16" style="transform-box:fill-box;transform-origin:center"/>
+      <g class="snow" id="ms${i}" transform="translate(${x+w-26} ${y+hh-26})"><path d="M0 -9V9M-7.8 -4.5L7.8 4.5M-7.8 4.5L7.8 -4.5"/><path d="M-2.5 -9L0 -6.5L2.5 -9M-2.5 9L0 6.5L2.5 9" /></g>
+      <text class="zname" x="${x+14}" y="${y+26}">${NAMES[i]}</text>
+      <text class="zmeta" id="mm${i}" x="${x+14}" y="${y+44}"></text>
+      <g id="mr${i}"></g>
+      <text class="zval" id="mv${i}" x="${x+14}" y="${y+hh-14}"></text>
+    </g>`;
+  });
+  h+=`<text class="note" x="20" y="410">ILLUSTRATIVE SITE PLAN</text><text class="note" x="620" y="410" text-anchor="end">N ↑</text>`;
+  svg.innerHTML=h;
+}
+function updateMap(){
+  const idx=S.view==='exact'?S.prob.ex:S.view==='greedy'?S.prob.gr:(S.ro?S.ro.qIdx:0);
+  const sel=new Set(bitsOf(idx));
+  zones.forEach((z,i)=>{
+    const on=sel.has(i),[x,y,w,hh]=BOX[i];
+    const t=$('mt'+i);
+    t.style.fill=on?`color-mix(in srgb, var(--cool) 20%, var(--surface))`:`color-mix(in srgb, ${rk(z.risk)} 30%, var(--surface))`;
+    t.style.stroke=on?'var(--cool)':`color-mix(in srgb, ${rk(z.risk)} 70%, var(--surface))`;
+    t.style.strokeWidth=on?3:1.5;
+    $('ms'+i).style.opacity=on?1:0;
+    $('mh'+i).classList.toggle('on',on);$('mh'+i).style.opacity=on?'':0;
+    $('mm'+i).textContent=`${z.pop} people · ${z.cost} unit${z.cost>1?'s':''}`;
+    const big=hh>110;let bars='';
+    for(let r=1;r<=5;r++){bars+=`<rect x="${x+14+(r-1)*22}" y="${big?y+hh-40:y+hh-16}" width="18" height="6" rx="3" style="fill:${r<=z.risk?rk(z.risk):'var(--line)'}"/>`}
+    $('mr'+i).innerHTML=bars;
+    const mv=$('mv'+i);mv.textContent=`exposure ${fmt(S.prob.value[i])}`;
+    mv.setAttribute('x',x+14);mv.setAttribute('y',big?y+hh-14:y+62);
+  });
+  const P=S.prob,val=P.val[idx],ppl=covered(idx),tot=P.value.reduce((a,b)=>a+b,0),all=zones.reduce((a,z)=>a+z.pop,0);
+  $('totals').innerHTML=`
+    <div><b>${fmt(val)}</b><span>exposure covered of ${fmt(tot)}</span></div>
+    <div><b>${ppl.toLocaleString()}</b><span>of ${all.toLocaleString()} people</span></div>
+    <div><b>${P.cst[idx]} / ${P.B}</b><span>cooling units used</span></div>`;
+  $('bTxt').textContent=P.B;
+}
+
+// method cards
+function methodCard(key,title,how,color,idx){
+  const P=S.prob,opt=P.val[P.ex]||1,v=P.val[idx];
+  const chips=idx?bitsOf(idx).map(k=>`<span class="chip">${NAMES[k]}</span>`).join(''):`<span class="chip none">No zone cooled</span>`;
+  return `<div class="card m" style="--mc:${color}"><h3><span class="dot"></span>${title}</h3><p class="how">${how}</p>
+    <div class="val">${fmt(v)}<small>${fmt(100*v/opt,1)}% of best</small></div>
+    <div class="bar"><i style="width:${Math.min(100,100*v/opt)}%"></i></div>
+    <div class="kv"><span><b>${covered(idx).toLocaleString()}</b> people</span><span><b>${P.cst[idx]}/${P.B}</b> units</span></div>
+    <div class="chips">${chips}</div></div>`;
+}
+function updateMethods(){
+  const P=S.prob;
+  $('methods').innerHTML=
+    methodCard('exact','Exact search','Checks all 64 combinations. Always optimal, but the work doubles with every added zone.','var(--exact)',P.ex)+
+    methodCard('greedy','Greedy','Cools zones in order of exposure per unit until the budget runs out. Fast, but can miss the best mix.','var(--greedy)',P.gr)+
+    methodCard('qaoa','QAOA (Qiskit model)',S.ro?`Best allocation within budget from 1,024 measurements of a ${S.p}-layer circuit.`:'Optimising the circuit…','var(--cool)',S.ro?S.ro.qIdx:0);
+}
+
+// charts
+function chartA(){
+  const P=S.prob,h=S.res.hist,W=420,H=240,l=46,r=14,t=16,b=36;
+  const lo=P.Emin,hi=P.Emean,pad=(hi-lo)*.12,y0=lo-pad,y1=hi+pad,n=h.length;
+  const X=i=>l+(W-l-r)*i/Math.max(1,n-1),Y=v=>t+(H-t-b)*(1-(v-y0)/(y1-y0));
+  const step=Math.max(1,Math.floor(n/220));let d='';
+  for(let i=0;i<n;i+=step)d+=(d?'L':'M')+X(i).toFixed(1)+' '+Y(h[i]).toFixed(1);
+  d+='L'+X(n-1).toFixed(1)+' '+Y(h[n-1]).toFixed(1);
+  const fin=h[n-1];
+  $('chA').innerHTML=`
+   <line class="ax" x1="${l}" y1="${H-b}" x2="${W-r}" y2="${H-b}"/><line class="ax" x1="${l}" y1="${t}" x2="${l}" y2="${H-b}"/>
+   <line class="grid" x1="${l}" x2="${W-r}" y1="${Y(hi)}" y2="${Y(hi)}"/><line class="grid" x1="${l}" x2="${W-r}" y1="${Y(lo)}" y2="${Y(lo)}"/>
+   <text class="ct" x="${l-6}" y="${Y(hi)+3}" text-anchor="end">${fmt(hi,1)}</text><text class="ct" x="${l-6}" y="${Y(lo)+3}" text-anchor="end">${fmt(lo,1)}</text>
+   <text class="ct" x="${W-r}" y="${Y(hi)-5}" text-anchor="end">random guess</text><text class="ct" x="${W-r}" y="${Y(lo)+13}" text-anchor="end">lowest possible</text>
+   <path d="${d}" fill="none" stroke="var(--cool)" stroke-width="2.2" stroke-linejoin="round"/>
+   <circle cx="${X(n-1)}" cy="${Y(fin)}" r="4" fill="var(--cool)"/><text class="ct k" x="${X(n-1)-8}" y="${Y(fin)-8}" text-anchor="end">${fmt(fin,2)}</text>
+   <text class="ct" x="${l}" y="${H-b+16}">0</text><text class="ct" x="${W-r}" y="${H-b+16}" text-anchor="end">${n.toLocaleString()}</text>
+   <text class="ct" x="${(l+W-r)/2}" y="${H-6}" text-anchor="middle">circuit evaluations</text>`;
+}
+function chartB(){
+  const P=S.prob,pr=S.res.probs,order=[...Array(P.N).keys()].sort((a,b)=>pr[b]-pr[a]).slice(0,10);
+  const W=420,rowH=23,t=8,l=112,r=86,mx=Math.max(pr[order[0]],1/P.N)*1.12;
+  const X=v=>l+(W-l-r)*v/mx;let h='';
+  order.forEach((i,k)=>{
+    const y=t+k*rowH,cls=i===P.ex?'var(--cool)':P.cst[i]<=P.B?'var(--cool)':'var(--over)',op=i===P.ex?1:P.cst[i]<=P.B?.45:.85;
+    const lab=bitsOf(i).map(q=>CODES[q]).join('·')||'none';
+    h+=`<text class="ct k" x="${l-8}" y="${y+14}" text-anchor="end">${lab}</text>
+        <rect x="${l}" y="${y+3}" width="${Math.max(2,X(pr[i])-l)}" height="15" rx="3" fill="${cls}" opacity="${op}"/>
+        <text class="ct" x="${X(pr[i])+6}" y="${y+14}">${fmt(100*pr[i],1)}%</text>
+        <text class="ct" x="${W-4}" y="${y+14}" text-anchor="end">${fmt(P.val[i])} · ${P.cst[i]}/${P.B}u</text>`;
+  });
+  const H=t+order.length*rowH+22;
+  h+=`<line x1="${X(1/P.N)}" x2="${X(1/P.N)}" y1="${t-2}" y2="${t+order.length*rowH}" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <text class="ct" x="${X(1/P.N)+4}" y="${H-6}">random guess ${fmt(100/P.N,1)}%</text>`;
+  $('chB').setAttribute('viewBox',`0 0 ${W} ${H}`);$('chB').innerHTML=h;
+}
+function chartC(){
+  const P=S.prob,ro=S.ro,W=420,H=270,l=40,r=14,t=16,b=36,shots=ro.qBest.length;
+  const opt=Math.max(P.val[P.ex],1),y1=opt*1.1,X=s=>l+(W-l-r)*Math.log(s)/Math.log(shots),Y=v=>t+(H-t-b)*(1-v/y1);
+  const path=a=>{let d=`M${X(1)} ${Y(a[0])}`;for(let i=1;i<a.length;i++){if(a[i]!==a[i-1])d+=`H${X(i+1).toFixed(1)}V${Y(a[i]).toFixed(1)}`}return d+`H${X(shots)}`};
+  const ticks=[1,4,16,64,256,1024].filter(v=>v<=shots);
+  const gv=P.val[P.gr];
+  $('chC').innerHTML=`
+   <line class="ax" x1="${l}" y1="${H-b}" x2="${W-r}" y2="${H-b}"/><line class="ax" x1="${l}" y1="${t}" x2="${l}" y2="${H-b}"/>
+   ${ticks.map(v=>`<text class="ct" x="${X(v)}" y="${H-b+16}" text-anchor="middle">${v}</text>`).join('')}
+   <text class="ct" x="${l-6}" y="${Y(0)+3}" text-anchor="end">0</text><text class="ct" x="${l-6}" y="${Y(opt)+3}" text-anchor="end">${fmt(opt,0)}</text>
+   <line x1="${l}" x2="${W-r}" y1="${Y(opt)}" y2="${Y(opt)}" stroke="var(--exact)" stroke-dasharray="5 4"/>
+   <line x1="${l}" x2="${W-r}" y1="${Y(gv)}" y2="${Y(gv)}" stroke="var(--greedy)" stroke-dasharray="5 4"/>
+   <text class="ct" x="${l+6}" y="${Y(opt)-6}" style="fill:var(--exact)">exact best ${fmt(opt)}</text>
+   <text class="ct" x="${W-r}" y="${Y(gv)+14}" text-anchor="end" style="fill:var(--greedy)">greedy ${fmt(gv)}</text>
+   <path d="${path(ro.rBest)}" fill="none" stroke="var(--muted)" stroke-width="2"/>
+   <path d="${path(ro.qBest)}" fill="none" stroke="var(--cool)" stroke-width="2.6"/>
+   <text class="ct" x="${(l+W-r)/2}" y="${H-6}" text-anchor="middle">measurement shots (log scale)</text>`;
+}
+function updateStats(){
+  const ro=S.ro,P=S.prob;
+  const x=(a,b)=>b>0?` · ${fmt(a/b,1)}× random`:'';
+  $('stats').innerHTML=`
+   <div class="card stat"><b>${fmt(100*ro.pOpt,1)}%</b><span>of shots return the optimal allocation</span><em>random guess ${fmt(100*ro.uOpt,1)}%${x(ro.pOpt,ro.uOpt)}</em></div>
+   <div class="card stat"><b>${fmt(ro.meanFeas)}</b><span>average value of shots within budget</span><em>random guess ${fmt(ro.uMean)} · best possible ${fmt(P.val[P.ex])}</em></div>
+   <div class="card stat"><b>${fmt(100*ro.pFeas,0)}%</b><span>of shots stay within the unit budget</span><em>random guess ${fmt(100*ro.uFeas,0)}%</em></div>
+   <div class="card stat"><b>${fmt(S.res.energy,2)}</b><span>final ⟨H<sub>C</sub>⟩ after ${S.res.hist.length.toLocaleString()} evaluations</span><em>random ${fmt(P.Emean,2)} · lowest ${fmt(P.Emin,2)}</em></div>`;
+}
+
+// how it works
+function drawHam(){
+  const P=S.prob,n=P.n;let mx=0;for(let i=0;i<n;i++){mx=Math.max(mx,Math.abs(P.h[i]));for(let j=0;j<n;j++)if(i!==j)mx=Math.max(mx,Math.abs(P.J[i][j]))}
+  let h='<tr><th></th>'+CODES.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  for(let i=0;i<n;i++){h+=`<tr><th>${CODES[i]}</th>`;
+    for(let j=0;j<n;j++){const v=i===j?P.h[i]:P.J[i][j],a=Math.min(1,Math.abs(v)/mx),tone=i===j?'var(--cool)':'var(--r3)';
+      h+=`<td style="background:color-mix(in srgb, ${tone} ${Math.round(8+a*52)}%, var(--surface));${i===j?'font-weight:500;':''}">${v>=0?'+':'−'}${Math.abs(v).toFixed(2)}</td>`}
+    h+='</tr>'}
+  $('hm').innerHTML=h;
+  $('pen').textContent=`L1 = ${P.l1}, L2 = ${P.l2}${P.matched?'':' (no pair reached the optimum; treat results with care)'}`;
+}
+function drawCircuit(){
+  const n=6,p=S.p,dy=30,x0=64,pit=p>=4?116:p===3?124:140,W=x0+36+p*pit+52,H=n*dy+26;let h='';
+  for(let i=0;i<n;i++){const y=22+i*dy;
+    h+=`<text class="m" x="4" y="${y+4}">q${i}</text><line class="w" x1="${x0-16}" x2="${W-8}" y1="${y}" y2="${y}"/>
+        <rect class="g" x="${x0}" y="${y-10}" width="22" height="20" rx="4"/><text x="${x0+11}" y="${y+4}" text-anchor="middle">H</text>`;}
+  for(let l=0;l<p;l++){const bx=x0+36+l*pit;
+    h+=`<rect class="gc" x="${bx}" y="8" width="66" height="${n*dy-4}" rx="6"/>
+        <text x="${bx+33}" y="${8+(n*dy-4)/2-2}" text-anchor="middle">U<tspan dy="3" font-size="8">C</tspan><tspan dy="-3">(γ</tspan><tspan dy="3" font-size="8">${l+1}</tspan><tspan dy="-3">)</tspan></text>`;
+    for(let i=0;i<n;i++){const y=22+i*dy;
+      h+=`<rect class="g" x="${bx+78}" y="${y-10}" width="52" height="20" rx="4"/><text x="${bx+104}" y="${y+4}" text-anchor="middle" style="font-size:10px">RX(2β${l+1})</text>`}}
+  for(let i=0;i<n;i++){const y=22+i*dy,x=W-40;
+    h+=`<rect class="g" x="${x}" y="${y-10}" width="28" height="20" rx="4"/><path d="M${x+6} ${y+4}A8 8 0 0 1 ${x+22} ${y+4}" fill="none" stroke="var(--ink)"/><path d="M${x+14} ${y+4}L${x+19} ${y-4}" stroke="var(--ink)"/>`}
+  const c=$('circ');c.setAttribute('viewBox',`0 0 ${W} ${H}`);c.style.width=Math.max(W,360)+'px';c.innerHTML=h;
+  const r=S.res;
+  $('params').innerHTML=r.gamma.map((g,i)=>`<span>γ<sub>${i+1}</sub> = <b>${g.toFixed(3)}</b></span>`).join('')+r.beta.map((g,i)=>`<span>β<sub>${i+1}</sub> = <b>${g.toFixed(3)}</b></span>`).join('');
+}
+
+// run
+function setStatus(t){$('status').textContent=t}
+function schedule(delay){clearTimeout(S.timer);setStatus('Updating…');S.timer=setTimeout(run,delay)}
+function run(){
+  const id=++S.runId;
+  S.prob=buildProblem(zones,S.B);
+  S.res=null;S.ro=null;
+  updateMap();updateMethods();drawHam();
+  setStatus('Optimising circuit…');
+  const job=trainQAOA(S.prob,S.p,S.seed,8,(k,tot)=>{if(id===S.runId)setStatus(`Optimising circuit… ${k}/${tot} starts`)});
+  let i=0;
+  const tick=()=>{
+    if(id!==S.runId)return;
+    if(i<job.steps.length){job.steps[i++]();setTimeout(tick,45);return}
+    S.res=job.finish();S.ro=readout(S.prob,S.res.probs,S.seed+101,1024);
+    updateMap();updateMethods();chartA();chartB();chartC();updateStats();drawCircuit();
+    setStatus(`Done · ${S.res.hist.length.toLocaleString()} circuit evaluations`);
+  };
+  setTimeout(tick,60);
+}
+
+// events
+function bind(){
+  $('zrows').addEventListener('input',e=>{
+    const el=e.target;if(!el.dataset.k)return;
+    const i=+el.dataset.i,k=el.dataset.k;zones[i][k]=+el.value;$(`${k}V${i}`).textContent=el.value;
+    if(k==='risk')$('zr'+i).style.setProperty('--rk',rk(zones[i].risk));
+    schedule(400);
+  });
+  $('budget').addEventListener('input',e=>{S.B=+e.target.value;$('budgetV').textContent=S.B;schedule(400)});
+  $('pSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.p=+b.dataset.p;
+    [...$('pSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));schedule(60)});
+  $('methodSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.view=b.dataset.m;
+    [...$('methodSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));if(S.prob)updateMap()});
+  $('rerun').addEventListener('click',()=>{S.seed=(S.seed*7+13)%9973;schedule(30)});
+  const code=$('codeSrc').textContent.replace(/^\s*\n/,'');$('codeBox').textContent=code;
+  $('copyCode').addEventListener('click',async()=>{
+    const btn=$('copyCode');
+    try{await navigator.clipboard.writeText(code);btn.textContent='Copied'}
+    catch(_){const r=document.createRange();r.selectNodeContents($('codeBox'));const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selected, press copy'}
+    setTimeout(()=>btn.textContent='Copy code',1800)});
+}
+buildRows();buildMap();bind();run();
+</script>
+</body></html>

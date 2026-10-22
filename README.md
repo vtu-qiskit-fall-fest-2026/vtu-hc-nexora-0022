@@ -44,11 +44,11 @@
 > Members are added to this repository as **collaborators** and must accept the
 > GitHub invitation before they can push. Add your GitHub username below.
 
-| # | Name | GitHub Username | Role |
+| # | Name | GitHub Profile | Role |
 | :-- | :--- | :--- | :--- |
-| 1 | _Add your name_ | _your-github-username_ | _Team Lead_ |
-| 2 | _Add your name_ | _your-github-username_ | _Developer_ |
-| 3 | _Add your name_ | _your-github-username_ | _Developer_ |
+| 1 | Niranjan Mathapati | [GitHub](https://github.com/NiranjanMathapati) | Team Lead |
+| 2 | Iqra Sanadi | [GitHub](https://github.com/IqraSanadi22) | Developer |
+| 3 | Manyata Tegnale | [GitHub](https://github.com/manyatategnale) | Developer |
 
 <!--
 Optional: add a plain list instead of the table above.
@@ -66,11 +66,11 @@ who experiences it, and why does it matter. Link to the official problem
 statement from the brief if one applies.
 -->
 
-**Problem:** _Describe the problem in 2–3 sentences._
+**Problem:** Rising temperatures and heatwaves increase cooling demand, while cooling resources may be limited. Allocating these resources across different zones with varying heat exposure and cooling needs creates an optimization challenge.
 
-**Why it matters:** _Explain the impact or opportunity._
+**Why it matters:** Inefficient allocation may leave high-risk zones without sufficient cooling. Exploring optimization techniques for distributing limited resources can support research into climate adaptation and heat-risk management.
 
-**Track / Category:** _Online / Offline · Track 1 / Track 2 · <domain>_
+**Track / Category:** Track 6 — Quantum Applications for Climate Change and Sustainability.
 
 ---
 
@@ -81,11 +81,13 @@ Describe your solution. Keep it concrete: the core idea, the user flow, and
 the quantum/ML technique you are applying.
 -->
 
-**Solution:** _In 2–3 sentences, describe what you built._
+**Solution:** HEATSHIELD-Q is an interactive dashboard that models cooling-resource allocation across multiple zones. It compares classical optimization methods with a Qiskit-based quantum optimization approach.
 
-**Key idea:** _The one-line technical summary of your approach._
+**Key idea:** Formulate cooling-resource allocation as a constrained optimization problem and compare Exact Optimization, Greedy Optimization, and the Quantum Approximate Optimization Algorithm (QAOA).
 
-**Why this works:** _How your approach addresses the problem statement._
+**Why this works:** Comparing these approaches on the same modeled problem allows users to examine their allocation decisions and objective values. The project also explores the effect of noise on QAOA through simulation.
+
+**Project goal:** Investigate how quantum optimization could be explored for climate-related resource allocation. The prototype does not claim that quantum optimization outperforms classical methods or has demonstrated real-world energy savings.
 
 ---
 
@@ -103,24 +105,30 @@ flowchart LR
     D --> E[Output]
 ```
 
-1. **Input** — _what data goes in and in what format_
-2. **Preprocessing** — _cleaning, feature extraction, encoding_
-3. **Quantum core** — _the circuit, ansatz, or algorithm used_
-4. **Post-processing** — _decoding, measurement, scoring_
-5. **Output** — _what the user finally gets_
+1. **Input** — Load the configured problem data, including zones, resource limits, and allocation parameters.
+2. **Preprocessing** — Prepare the problem data and formulate the resource-allocation objective and constraints. Convert the allocation problem into a mathematical representation suitable for classical optimization and QAOA.
+3. **Quantum core** — Use the Quantum Approximate Optimization Algorithm (QAOA) with Qiskit to construct and simulate a parameterized quantum circuit that explores possible cooling-resource allocations.
+4. **Post-processing** — Measure the simulated quantum circuit, evaluate candidate allocation solutions, check their feasibility, and calculate their objective values. Compare the QAOA results with Exact Optimization and Greedy Optimization, including results from noisy simulation where applicable.
+5. **Output** — Display the allocation results, objective values, comparison between optimization methods, and visualizations through the HEATSHIELD-Q interactive Streamlit dashboard
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| Language | Python 3.11+ |
-| Quantum SDK | Qiskit `>=1.0`, Qiskit Aer, Qiskit Runtime |
-| Optimisation | Qiskit Optimization / COBYLA / SPSA |
-| Simulation | AerSimulator (statevector / noisemodel) |
-| Environment | JupyterLab / VS Code, `venv` |
-| Version control | Git + GitHub |
+| Layer                   | Technology                                        |
+| :---------------------- | :------------------------------------------------ |
+| Programming Language    | Python                                            |
+| Quantum SDK             | Qiskit                                            |
+| Quantum Optimization    | Quantum Approximate Optimization Algorithm (QAOA) |
+| Classical Baselines     | Exact Optimization and Greedy Optimization        |
+| Numerical Computing     | NumPy, SciPy                                      |
+| Data Handling           | Pandas                                            |
+| Visualization           | Matplotlib                                        |
+| Web Application         | Streamlit                                         |
+| Testing                 | Pytest                                            |
+| Development Environment | Python virtual environment, VS Code               |
+| Version Control         | Git and GitHub                                    |
+
 
 ---
 
@@ -128,22 +136,34 @@ flowchart LR
 
 ```text
 vtu-hc-nexora-0022/
-├── README.md              # This file
-├── requirements.txt       # Python dependencies
-├── pyproject.toml         # Project metadata (optional)
-├── .gitignore
-├── notebooks/             # Jupyter notebooks for experiments
-│   └── exploration.ipynb
-├── src/
+├── .streamlit/
+│   └── config.toml
+├── docs/
+│   ├── hardware_result.json
+│   ├── result.json
+│   ├── scaling.json
+│   └── scaling.png
+├── heatshield/
 │   ├── __init__.py
-│   ├── circuit.py         # Quantum circuit construction
-│   ├── optimizer.py       # Optimization loop
-│   └── main.py            # Entry point
-├── data/                  # Datasets (use Git LFS for large files)
-├── tests/                 # Unit tests
-│   └── test_circuit.py
-└── docs/                  # Notes, diagrams, reports
+│   ├── classical.py
+│   ├── data.py
+│   ├── hamiltonian.py
+│   ├── problem.py
+│   └── qaoa.py
+├── tests/
+│   └── test_model.py
+├── web/
+│   └── index.html
+├── app.py
+├── run_demo.py
+├── run_hardware.py
+├── run_scaling.py
+├── requirements.txt
+├── README.md
+├── LICENSE
+└── .gitignore
 ```
+
 
 ---
 
@@ -151,49 +171,66 @@ vtu-hc-nexora-0022/
 
 ### Prerequisites
 
-- Python 3.11 or newer
-- [Git](https://git-scm.com/downloads)
-- A GitHub account (you need collaborator access to this repo)
+* Python 3.11 or newer, subject to dependency compatibility.
+* Git.
+* A terminal or VS Code.
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/vtu-qiskit-fall-fest-2026/vtu-hc-nexora-0022.git
 cd vtu-hc-nexora-0022
 ```
 
-### 2. Create a virtual environment
+### 2. Create a Virtual Environment
+
+**Windows PowerShell:**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+**Linux or macOS:**
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate        # Linux / macOS
-# .venv\Scripts\activate         # Windows (PowerShell)
+source .venv/bin/activate
 ```
 
-### 3. Install dependencies
+### 3. Install Dependencies
 
 ```bash
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-### 4. Run
+### 4. Launch the Dashboard
 
 ```bash
-python -m src.main
+python -m streamlit run app.py
 ```
 
-Or launch the notebook workflow:
+Open the local address printed in the terminal.
+
+### 5. Run the Tests
 
 ```bash
-jupyter lab
+python -m pytest -q
 ```
 
-### 5. Run the tests
+### 6. Run Experiments (Optional)
 
 ```bash
-pytest -q
+python run_demo.py
+python run_hardware.py
+python run_scaling.py
 ```
+
+Run the experiment scripts separately as needed.
+
+**Note:** The hardware-style experiment uses a noisy simulation based on `fake_sherbrooke`. It does not imply execution on a physical quantum processor.
+
 
 ---
 
@@ -268,15 +305,18 @@ git pull --rebase       # update your branch on top of main
 
 ## ✅ Submission Checklist
 
-- [ ] Repository created and **public**
-- [ ] All team members added as **collaborators** and invitations accepted
-- [ ] `README.md` updated with project details, problem statement and solution
-- [ ] Team members listed under [Team Members](#-team-members-github-ids)
-- [ ] `requirements.txt` committed and project runs from a clean clone
-- [ ] Code pushed to `main` and the latest `main` builds successfully
-- [ ] Notebooks committed with **cleared outputs** (or use `nbstrip`)
-- [ ] `README` includes a demo screenshot / video link
-- [ ] Short project summary submitted on the hackathon portal
+- [ ]README contains the project problem, solution, architecture, and setup instructions.
+- [ ]Team members and GitHub profiles are listed correctly.
+- [ ]Track 6 — Quantum Applications for Climate Change and Sustainability — is identified correctly.
+- [ ]requirements.txt is included.
+- [ ]The dashboard runs successfully.
+- [ ]Tests pass.
+- [ ]Required source code and project files are pushed to the assigned team repository.
+- [ ]Demo video is uploaded to YouTube, as required by the event.
+- [ ]Working prototype is ready for demonstration.
+- [ ]Required AI assistance and external references are acknowledged.
+- [ ]Final submission is completed before the official deadline.
+
 
 ---
 
@@ -304,9 +344,8 @@ Released under the [MIT License](LICENSE). See `LICENSE` for details.
 
 <div align="center">
 
-**Nexora** · Team ID `VTU-QFF-HC-0022` · Tier `Both`
-· Built with ⚛️ Qiskit for the VTU-QFF Hackathon
+# Nexora
 
-[⬆ Back to Top](#nexora)
+**VTU-QFF-HC-0022** | Tier: **Both**
 
 </div>

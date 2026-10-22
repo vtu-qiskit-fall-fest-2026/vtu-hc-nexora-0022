@@ -15,7 +15,11 @@ numpy>=1.26
 scipy>=1.11
 pandas>=2.1
 matplotlib>=3.8
+pylatexenc>=2.10
 scikit-learn>=1.4
 
 # Testing
 pytest>=8.0
+
+# Web application
+streamlit>=1.40
