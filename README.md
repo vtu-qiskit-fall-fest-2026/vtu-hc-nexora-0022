@@ -94,7 +94,7 @@ the quantum/ML technique you are applying.
 
 Explore our HEATSHIELD-Q presentation for an overview of the problem statement, proposed solution, QAOA-based quantum optimization approach, classical comparisons, and project results.
 
-* 📽️ **[View HEATSHIELD-Q Presentation](VTU-QFF-NEXORA-HEATSHIELD-Q.pptx)**
+* 📽️ **[View HEATSHIELD-Q Presentation](VTU-QFF-NEXORA-HEATSHIELD-Q(2).pptx)**
 * 🎬 **[Watch Project Demo](https://youtu.be/7Qv1oBpaJqU)**
 * 🌐 **[Try the Live Dashboard](https://vtu-hc-nexora-0022-z6izqrs28n5usmndieb7ce.streamlit.app/)**
 
