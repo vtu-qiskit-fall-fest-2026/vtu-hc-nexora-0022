@@ -90,6 +90,16 @@ the quantum/ML technique you are applying.
 **Project goal:** Investigate how quantum optimization could be explored for climate-related resource allocation. The prototype does not claim that quantum optimization outperforms classical methods or has demonstrated real-world energy savings.
 
 ---
+## 📊 Project Presentation
+
+Explore our HEATSHIELD-Q presentation for an overview of the problem statement, proposed solution, QAOA-based quantum optimization approach, classical comparisons, and project results.
+
+* 📽️ **[View HEATSHIELD-Q Presentation](VTU-QFF-NEXORA-HEATSHIELD-Q.pptx)**
+* 🎬 **[Watch Project Demo](https://youtu.be/7Qv1oBpaJqU)**
+* 🌐 **[Try the Live Dashboard](https://vtu-hc-nexora-0022-z6izqrs28n5usmndieb7ce.streamlit.app/)**
+
+---
+
 
 ## 🧩 Approach & Architecture
 
